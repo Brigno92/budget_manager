@@ -34,6 +34,15 @@
 - Keep JSON/API mapping isolated from domain models when the project architecture supports it.
 - Respect the project's existing state-management solution. Do not introduce Provider, Riverpod, Bloc/Cubit, GetX, etc. unless required by the task or already used.
 
+## Structure
+- Anything related to database, services, api, entities, models, enums, repository must go into folder BE
+- Folder context for db and repositories
+- Any service created into a folder Services
+- Any model or dto into model Folder
+- Any enums into Enums
+- Any other into same name folder
+- Anything related to Frontend goes into FE folder. 
+
 ## Testing
 - Run the project's existing formatter, analyzer, and tests after meaningful changes.
 - Prefer focused tests first, then the relevant broader test suite.

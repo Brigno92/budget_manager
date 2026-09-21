@@ -1,7 +1,10 @@
 import '../../BE/entities/transaction.dart';
 
-/// The net total (income minus expenses) of transactions recorded on a
+/// The net total (expenses minus income) of transactions recorded on a
 /// single day of the month, where `day` is the 1-based day-of-month.
+///
+/// Expenses point up (positive) and income points down (negative), so a
+/// day's spending shows as a peak on the chart.
 class DailyTotal {
   final int day;
   final double total;
@@ -29,8 +32,8 @@ List<DailyTotal> computeDailyTotals({
     if (depositId != null && transaction.depositId != depositId) continue;
 
     final signedAmount = transaction.isPositive
-        ? transaction.amount.toDouble()
-        : -transaction.amount.toDouble();
+        ? -transaction.amount.toDouble()
+        : transaction.amount.toDouble();
     totals[date.day - 1] += signedAmount;
   }
 

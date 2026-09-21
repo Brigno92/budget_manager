@@ -28,9 +28,11 @@ void main() {
     await tester.tap(find.text('Registro').last);
     await tester.pumpAndSettle();
 
-    // After navigating, "Home" remains only as a rail label.
+    // After navigating, "Home" remains only as a rail label. "Registro" is
+    // shown in the rail and the app bar; the content area renders the real
+    // Registro page (data-driven) rather than a label stub.
     expect(find.text('Home'), findsOneWidget);
-    expect(find.text('Registro'), findsNWidgets(3));
+    expect(find.text('Registro'), findsNWidgets(2));
   });
 
   testWidgets('Pressing the FAB opens the register-transaction dialog', (

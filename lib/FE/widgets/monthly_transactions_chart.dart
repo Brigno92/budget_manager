@@ -29,7 +29,7 @@ class MonthlyTransactionsChart extends StatelessWidget {
     final defaultColor = Theme.of(context).colorScheme.primary;
 
     return AspectRatio(
-      aspectRatio: 1.7,
+      aspectRatio: 2.8,
       child: LineChart(
         LineChartData(
           lineBarsData: _buildLines(now.year, now.month, defaultColor),
@@ -43,7 +43,11 @@ class MonthlyTransactionsChart extends StatelessWidget {
               ),
             ),
             leftTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: true, reservedSize: 48),
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 48,
+                interval: 5,
+              ),
             ),
             topTitles: const AxisTitles(
               sideTitles: SideTitles(showTitles: false),
@@ -52,7 +56,7 @@ class MonthlyTransactionsChart extends StatelessWidget {
               sideTitles: SideTitles(showTitles: false),
             ),
           ),
-          gridData: const FlGridData(show: true),
+          gridData: const FlGridData(show: true, horizontalInterval: 5),
           borderData: FlBorderData(show: true),
         ),
       ),
@@ -89,7 +93,7 @@ class MonthlyTransactionsChart extends StatelessWidget {
       spots: [
         for (final total in totals) FlSpot(total.day.toDouble(), total.total),
       ],
-      isCurved: true,
+      isCurved: false,
       color: color,
       barWidth: 2,
       dotData: const FlDotData(show: false),

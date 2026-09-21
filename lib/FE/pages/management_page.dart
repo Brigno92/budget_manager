@@ -27,7 +27,9 @@ class _ManagementPageState extends State<ManagementPage> {
   }
 
   void _reload() {
-    setState(() => _typesFuture = _transactionTypeRepository.getAll());
+    setState(() {
+      _typesFuture = _transactionTypeRepository.getAll();
+    });
   }
 
   Future<void> _openForm({TransactionType? existing}) async {
@@ -74,30 +76,42 @@ class _ManagementPageState extends State<ManagementPage> {
                   );
                 }
 
-                return SingleChildScrollView(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columns: const [
-                        DataColumn(label: Text('Nome')),
-                        DataColumn(label: Text('Azioni')),
-                      ],
-                      rows: [
-                        for (final type in types)
-                          DataRow(
-                            cells: [
-                              DataCell(Text(type.name)),
-                              DataCell(
-                                TextButton(
-                                  onPressed: () => _openForm(existing: type),
-                                  child: const Text('Dettaglio'),
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minWidth: constraints.maxWidth,
+                          ),
+                          child: DataTable(
+                            dataTextStyle: const TextStyle(color: Colors.white),
+                            columns: const [
+                              DataColumn(label: Text('Nome')),
+                              DataColumn(label: Text('Azioni')),
+                            ],
+                            rows: [
+                              for (final type in types)
+                                DataRow(
+                                  cells: [
+                                    DataCell(Text(type.name)),
+                                    DataCell(
+                                      IconButton.outlined(
+                                        icon: const Icon(Icons.info_outline),
+                                        tooltip: 'Dettaglio',
+                                        onPressed: () =>
+                                            _openForm(existing: type),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
                             ],
                           ),
-                      ],
-                    ),
-                  ),
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),

@@ -1,23 +1,28 @@
 import '../entities/subscription.dart';
 import 'app_database.dart';
+import 'deposit_repository.dart';
 import 'transaction_type_repository.dart';
 
 /// CRUD access to the `subscriptions` table.
 ///
-/// Reads hydrate [Subscription.transactionType] by looking it up through
-/// [TransactionTypeRepository].
+/// Reads hydrate [Subscription.transactionType] and [Subscription.deposit]
+/// by looking them up through [TransactionTypeRepository] and
+/// [DepositRepository].
 class SubscriptionRepository {
   static const String table = 'subscriptions';
 
   final AppDatabase _appDatabase;
   final TransactionTypeRepository _transactionTypeRepository;
+  final DepositRepository _depositRepository;
 
   SubscriptionRepository({
     AppDatabase? appDatabase,
     TransactionTypeRepository? transactionTypeRepository,
+    DepositRepository? depositRepository,
   }) : _appDatabase = appDatabase ?? AppDatabase(),
        _transactionTypeRepository =
-           transactionTypeRepository ?? TransactionTypeRepository();
+           transactionTypeRepository ?? TransactionTypeRepository(),
+       _depositRepository = depositRepository ?? DepositRepository();
 
   Future<int> create(Subscription subscription) async {
     final db = await _appDatabase.database;
@@ -61,6 +66,10 @@ class SubscriptionRepository {
     final transactionType = await _transactionTypeRepository.getById(
       subscription.transactionTypeId,
     );
-    return subscription.copyWith(transactionType: transactionType);
+    final deposit = await _depositRepository.getById(subscription.depositId);
+    return subscription.copyWith(
+      transactionType: transactionType,
+      deposit: deposit,
+    );
   }
 }

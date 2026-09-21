@@ -13,31 +13,34 @@ void main() {
       expect(totals.last.day, 28);
     });
 
-    test('sums positive and negative transactions on the same day', () {
-      final totals = computeDailyTotals(
-        transactions: [
-          Transaction(
-            transactionTypeId: 1,
-            depositId: 1,
-            transactionDate: DateTime(2026, 3, 5),
-            amount: 100,
-            isPositive: true,
-          ),
-          Transaction(
-            transactionTypeId: 1,
-            depositId: 1,
-            transactionDate: DateTime(2026, 3, 5),
-            amount: 40,
-            isPositive: false,
-          ),
-        ],
-        year: 2026,
-        month: 3,
-      );
+    test(
+      'sums expenses as positive and income as negative on the same day',
+      () {
+        final totals = computeDailyTotals(
+          transactions: [
+            Transaction(
+              transactionTypeId: 1,
+              depositId: 1,
+              transactionDate: DateTime(2026, 3, 5),
+              amount: 100,
+              isPositive: true,
+            ),
+            Transaction(
+              transactionTypeId: 1,
+              depositId: 1,
+              transactionDate: DateTime(2026, 3, 5),
+              amount: 40,
+              isPositive: false,
+            ),
+          ],
+          year: 2026,
+          month: 3,
+        );
 
-      expect(totals[4].day, 5);
-      expect(totals[4].total, 60);
-    });
+        expect(totals[4].day, 5);
+        expect(totals[4].total, -60);
+      },
+    );
 
     test('ignores transactions outside the requested month', () {
       final totals = computeDailyTotals(
@@ -80,7 +83,7 @@ void main() {
         depositId: 1,
       );
 
-      expect(totals[9].total, 50);
+      expect(totals[9].total, -50);
     });
   });
 }

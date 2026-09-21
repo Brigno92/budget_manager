@@ -28,7 +28,9 @@ class _DepositsPageState extends State<DepositsPage> {
   }
 
   void _reload() {
-    setState(() => _depositsFuture = _depositRepository.getAll());
+    setState(() {
+      _depositsFuture = _depositRepository.getAll();
+    });
   }
 
   Future<void> _openForm({Deposit? existing}) async {
@@ -75,38 +77,52 @@ class _DepositsPageState extends State<DepositsPage> {
                   );
                 }
 
-                return SingleChildScrollView(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columns: const [
-                        DataColumn(label: Text('Nome')),
-                        DataColumn(label: Text('Colore')),
-                        DataColumn(label: Text('Conto')),
-                        DataColumn(label: Text('Azioni')),
-                      ],
-                      rows: [
-                        for (final deposit in deposits)
-                          DataRow(
-                            cells: [
-                              DataCell(Text(deposit.name)),
-                              DataCell(
-                                ColorPreviewBox(
-                                  color: parseDepositColor(deposit.color),
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minWidth: constraints.maxWidth,
+                          ),
+                          child: DataTable(
+                            dataTextStyle: const TextStyle(color: Colors.white),
+                            columns: const [
+                              DataColumn(label: Text('Nome')),
+                              DataColumn(label: Text('Colore')),
+                              DataColumn(label: Text('Conto')),
+                              DataColumn(label: Text('Azioni')),
+                            ],
+                            rows: [
+                              for (final deposit in deposits)
+                                DataRow(
+                                  cells: [
+                                    DataCell(Text(deposit.name)),
+                                    DataCell(
+                                      ColorPreviewBox(
+                                        color: parseDepositColor(deposit.color),
+                                      ),
+                                    ),
+                                    DataCell(
+                                      Text(formatEuroAmount(deposit.account)),
+                                    ),
+                                    DataCell(
+                                      IconButton.outlined(
+                                        icon: const Icon(Icons.info_outline),
+                                        tooltip: 'Dettaglio',
+                                        onPressed: () =>
+                                            _openForm(existing: deposit),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              DataCell(Text(formatEuroAmount(deposit.account))),
-                              DataCell(
-                                TextButton(
-                                  onPressed: () => _openForm(existing: deposit),
-                                  child: const Text('Dettaglio'),
-                                ),
-                              ),
                             ],
                           ),
-                      ],
-                    ),
-                  ),
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),

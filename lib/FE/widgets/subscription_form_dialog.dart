@@ -2,41 +2,40 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../BE/context/deposit_repository.dart';
-import '../../BE/context/transaction_repository.dart';
+import '../../BE/context/subscription_repository.dart';
 import '../../BE/context/transaction_type_repository.dart';
 import '../../BE/entities/deposit.dart';
-import '../../BE/entities/transaction.dart';
+import '../../BE/entities/subscription.dart';
+import '../../BE/entities/subscription_type.dart';
 import '../../BE/entities/transaction_type.dart';
-import 'date_format.dart';
 import 'transaction_type_form_dialog.dart';
 
 typedef _FormOptions = ({List<Deposit> deposits, List<TransactionType> types});
 
-/// Dialog form to register a new expense [Transaction].
+/// Dialog form to register a new [Subscription].
 ///
-/// Shown from the app shell's "add" FAB. On save, it creates the
-/// transaction through [TransactionRepository] and pops with `true`.
-class RegisterTransactionDialog extends StatefulWidget {
-  const RegisterTransactionDialog({super.key});
+/// Pops with the created, id-populated [Subscription], or `null` if the
+/// user cancels.
+class SubscriptionFormDialog extends StatefulWidget {
+  const SubscriptionFormDialog({super.key});
 
   @override
-  State<RegisterTransactionDialog> createState() =>
-      _RegisterTransactionDialogState();
+  State<SubscriptionFormDialog> createState() => _SubscriptionFormDialogState();
 }
 
-class _RegisterTransactionDialogState extends State<RegisterTransactionDialog> {
+class _SubscriptionFormDialogState extends State<SubscriptionFormDialog> {
   final _formKey = GlobalKey<FormState>();
   final _depositRepository = DepositRepository();
   final _transactionTypeRepository = TransactionTypeRepository();
-  final _transactionRepository = TransactionRepository();
-  final _amountController = TextEditingController();
+  final _subscriptionRepository = SubscriptionRepository();
+  final _nameController = TextEditingController();
+  final _costController = TextEditingController();
 
   late Future<_FormOptions> _optionsFuture;
 
   int? _selectedDepositId;
   int? _selectedTransactionTypeId;
-  DateTime _selectedDate = DateTime.now();
-  bool _isIncome = false;
+  SubscriptionType _selectedType = SubscriptionType.monthly;
   bool _isSaving = false;
 
   @override
@@ -47,7 +46,8 @@ class _RegisterTransactionDialogState extends State<RegisterTransactionDialog> {
 
   @override
   void dispose() {
-    _amountController.dispose();
+    _nameController.dispose();
+    _costController.dispose();
     super.dispose();
   }
 
@@ -55,16 +55,6 @@ class _RegisterTransactionDialogState extends State<RegisterTransactionDialog> {
     final deposits = await _depositRepository.getAll();
     final types = await _transactionTypeRepository.getAll();
     return (deposits: deposits, types: types);
-  }
-
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null) setState(() => _selectedDate = picked);
   }
 
   Future<void> _createTransactionType() async {
@@ -90,31 +80,19 @@ class _RegisterTransactionDialogState extends State<RegisterTransactionDialog> {
 
     setState(() => _isSaving = true);
     try {
-      final amount = double.parse(_amountController.text.replaceAll(',', '.'))
-          .round();
-      final depositId = _selectedDepositId!;
-
-      await _transactionRepository.create(
-        Transaction(
-          transactionTypeId: _selectedTransactionTypeId!,
-          depositId: depositId,
-          transactionDate: _selectedDate,
-          amount: amount,
-          isPositive: _isIncome,
-        ),
+      final cost = double.parse(_costController.text.replaceAll(',', '.'));
+      final subscription = Subscription(
+        name: _nameController.text.trim(),
+        cost: cost.round(),
+        type: _selectedType,
+        creationDate: DateTime.now(),
+        transactionTypeId: _selectedTransactionTypeId!,
+        depositId: _selectedDepositId!,
       );
-
-      // Registering a transaction must also move the deposit's balance:
-      // transactions and the deposit's account are stored separately.
-      final deposit = await _depositRepository.getById(depositId);
-      if (deposit != null) {
-        final delta = _isIncome ? amount : -amount;
-        await _depositRepository.update(
-          deposit.copyWith(account: deposit.account + delta),
-        );
+      final id = await _subscriptionRepository.create(subscription);
+      if (mounted) {
+        Navigator.of(context).pop(subscription.copyWith(id: id));
       }
-
-      if (mounted) Navigator.of(context).pop(true);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -123,7 +101,7 @@ class _RegisterTransactionDialogState extends State<RegisterTransactionDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Registra transazione'),
+      title: const Text('Nuovo abbonamento'),
       content: SizedBox(
         width: 400,
         child: FutureBuilder<_FormOptions>(
@@ -153,6 +131,42 @@ class _RegisterTransactionDialogState extends State<RegisterTransactionDialog> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  TextFormField(
+                    controller: _nameController,
+                    autofocus: true,
+                    decoration: const InputDecoration(labelText: 'Nome'),
+                    validator: (value) =>
+                        (value == null || value.trim().isEmpty)
+                        ? 'Inserisci un nome'
+                        : null,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _costController,
+                    decoration: const InputDecoration(
+                      labelText: 'Costo (€)',
+                      prefixText: '€ ',
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
+                    ],
+                    validator: _validateCost,
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<SubscriptionType>(
+                    initialValue: _selectedType,
+                    decoration: const InputDecoration(labelText: 'Periodicità'),
+                    items: [
+                      for (final type in SubscriptionType.values)
+                        DropdownMenuItem(value: type, child: Text(type.label)),
+                    ],
+                    onChanged: (value) =>
+                        setState(() => _selectedType = value ?? _selectedType),
+                  ),
+                  const SizedBox(height: 16),
                   DropdownButtonFormField<int>(
                     initialValue: _selectedDepositId,
                     decoration: const InputDecoration(labelText: 'Deposito'),
@@ -167,14 +181,6 @@ class _RegisterTransactionDialogState extends State<RegisterTransactionDialog> {
                         setState(() => _selectedDepositId = value),
                     validator: (value) =>
                         value == null ? 'Seleziona un deposito' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  InkWell(
-                    onTap: _pickDate,
-                    child: InputDecorator(
-                      decoration: const InputDecoration(labelText: 'Data'),
-                      child: Text(formatItalianDate(_selectedDate)),
-                    ),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -207,29 +213,6 @@ class _RegisterTransactionDialogState extends State<RegisterTransactionDialog> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _amountController,
-                    decoration: const InputDecoration(
-                      labelText: 'Importo (€)',
-                      prefixText: '€ ',
-                    ),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
-                    ],
-                    validator: _validateAmount,
-                  ),
-                  CheckboxListTile(
-                    value: _isIncome,
-                    contentPadding: EdgeInsets.zero,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    title: const Text('È un guadagno'),
-                    onChanged: (value) =>
-                        setState(() => _isIncome = value ?? false),
-                  ),
                 ],
               ),
             );
@@ -238,7 +221,7 @@ class _RegisterTransactionDialogState extends State<RegisterTransactionDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _isSaving ? null : () => Navigator.of(context).pop(false),
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
           child: const Text('Annulla'),
         ),
         FilledButton(
@@ -256,9 +239,9 @@ class _RegisterTransactionDialogState extends State<RegisterTransactionDialog> {
   }
 }
 
-String? _validateAmount(String? value) {
-  if (value == null || value.trim().isEmpty) return 'Inserisci un importo';
+String? _validateCost(String? value) {
+  if (value == null || value.trim().isEmpty) return 'Inserisci un costo';
   final parsed = double.tryParse(value.replaceAll(',', '.'));
-  if (parsed == null || parsed <= 0) return 'Importo non valido';
+  if (parsed == null || parsed <= 0) return 'Costo non valido';
   return null;
 }

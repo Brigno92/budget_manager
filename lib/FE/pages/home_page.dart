@@ -79,10 +79,30 @@ class _HomePageState extends State<HomePage> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
-            MonthlyTransactionsChart(
-              transactions: data.transactions,
-              deposits: data.deposits,
-              selectedDepositIds: _selectedDepositIds,
+            // The chart keeps a plain light theme inside its white card,
+            // regardless of the app's dark theme around it. `Theme` alone
+            // doesn't repaint inherited text/icon color, so both are
+            // overridden explicitly for anything the chart draws as a
+            // plain Text/Icon (e.g. fl_chart's axis labels).
+            Card(
+              color: Colors.white,
+              child: Theme(
+                data: ThemeData.light(),
+                child: DefaultTextStyle.merge(
+                  style: const TextStyle(color: Colors.black87),
+                  child: IconTheme.merge(
+                    data: const IconThemeData(color: Colors.black87),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: MonthlyTransactionsChart(
+                        transactions: data.transactions,
+                        deposits: data.deposits,
+                        selectedDepositIds: _selectedDepositIds,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 8),
             DepositFilterAccordion(

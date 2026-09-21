@@ -1,5 +1,9 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_common_ffi.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 /// Singleton wrapper around the app's SQLite database.
 class AppDatabase {
@@ -9,6 +13,20 @@ class AppDatabase {
   AppDatabase._internal();
 
   factory AppDatabase() => _instance;
+
+  /// Selects the right [databaseFactory] for the current platform.
+  ///
+  /// Plain `sqflite` only auto-registers a factory on Android/iOS through its
+  /// native plugin; Web and desktop need an explicit FFI-based backend
+  /// instead. Must be called once, before the first [database] access.
+  static void initializeFactory() {
+    if (kIsWeb) {
+      databaseFactory = databaseFactoryFfiWeb;
+    } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
+  }
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -21,9 +39,10 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 1,
+      version: 2,
       onConfigure: _onConfigure,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -36,6 +55,20 @@ class AppDatabase {
     await _createTransactionTypesTable(db);
     await _createTransactionsTable(db);
     await _createSubscriptionsTable(db);
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute(
+        'ALTER TABLE subscriptions ADD COLUMN deposit_id INTEGER',
+      );
+      await db.execute(
+        'ALTER TABLE subscriptions ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1',
+      );
+      await db.execute(
+        'ALTER TABLE subscriptions ADD COLUMN last_billed_date TEXT',
+      );
+    }
   }
 
   Future<void> _createDepositsTable(Database db) async {
@@ -83,7 +116,11 @@ class AppDatabase {
         type TEXT NOT NULL,
         creation_date TEXT NOT NULL,
         transaction_type_id INTEGER NOT NULL,
-        FOREIGN KEY (transaction_type_id) REFERENCES transaction_types (id) ON DELETE RESTRICT
+        deposit_id INTEGER NOT NULL,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        last_billed_date TEXT,
+        FOREIGN KEY (transaction_type_id) REFERENCES transaction_types (id) ON DELETE RESTRICT,
+        FOREIGN KEY (deposit_id) REFERENCES deposits (id) ON DELETE RESTRICT
       )
     ''');
   }
